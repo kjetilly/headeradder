@@ -65,7 +65,23 @@ class Header:
             else:
                 print("Found header in %s" % filename)
 
+    def remove_header( self, filename):
+        extension = os.path.splitext(filename)[1]
+        if self.checks.get(extension) == None or self.writers.get(extension)==None:
+            print("Could not find writer or checker for extension %s." % extension)
+            print("Skipping file %s." % filename)
+            return
+        with codecs.open(filename, "r+", "utf8") as f:
+            text = f.read()
 
+            # Check if we should remove header
+            if self.checks[extension](text, self.keyword):
+                regex = "(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)"
+                text = re.sub( regex, "", text, 1 )
+                f.seek(0)
+                f.truncate()
+                f.write(text)
+    
 def recurse(dirname, header):
     print ("Recursing into %s" % dirname)
     if os.path.isdir(dirname):
@@ -82,11 +98,13 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--headerfile")
     parser.add_argument("-k", "--keyword")
     parser.add_argument("-r", "--recurse")
+    parser.add_argument("-x", "--remove", action='store_true')
     args = parser.parse_args()
     header_file = args.headerfile
     filename = args.filename
     keyword = args.keyword
     recursedir = args.recurse
+    remove = args.remove
 
     header = []
 
@@ -98,4 +116,7 @@ if __name__ == "__main__":
         print("Recursing")
         recurse(recursedir, h)
     else:
-        h.add_header(filename)
+        if remove:
+            h.remove_header(filename)
+        else:
+            h.add_header(filename)
